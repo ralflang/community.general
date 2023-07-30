@@ -26,6 +26,9 @@ attributes:
     diff_mode:
         support: none
 options:
+    repos:
+        description:
+            - A list of dicts containing keys name, repo, description, disable_gpg_check, autorefresh, priority, enabled, run_refresh following the same requirements as in single mode. Undefined keys are overwritten by defined keys of top level.
     name:
         description:
             - A name for the repository. Not required when adding repofiles.
@@ -40,6 +43,12 @@ options:
         choices: [ "absent", "present" ]
         default: "present"
         type: str
+    remove_others:
+      description:
+        - Remove other then added repositories
+        - Used if O(state=present)
+      type: bool
+    default: false
     description:
         description:
             - A description of the repository
