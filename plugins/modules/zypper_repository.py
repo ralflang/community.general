@@ -460,7 +460,10 @@ def single_repository_operation(module, single_repository_params):
         module.fail_json(msg="Zypper failed with rc %s" % rc, rc=rc, stdout=stdout, stderr=stderr, repodata=repodata, state=state, warnings=warnings)
     return {}
 
-def remove_other_repositories():
+def remove_other_repositories(module):
+    existing_repos = _parse_repos(module)
+    # If an existing repo does not match any of the defined repo(s) in all defined aspects, remove it
+
     return {}
 
 def aggregate_state(old_state, new_state):
@@ -507,7 +510,7 @@ def main():
 
     ## Finally check if remove_others was set
     if module.params['remove_others']:
-        remove_other_repositories(module.params)
+        remove_other_repositories(module)
 
 
 if __name__ == '__main__':
