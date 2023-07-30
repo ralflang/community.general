@@ -28,7 +28,7 @@ attributes:
 options:
     repos:
         description:
-            - A list of dicts containing keys name, repo, description, disable_gpg_check, autorefresh, priority, enabled, run_refresh following the same requirements as in single mode. Undefined keys are overwritten by defined keys of top level.
+            - A list of dicts containing keys name, repo, description, disable_gpg_check, autorefresh, priority, enabled, run_refresh following the same requirements as in single mode. Undefined keys use defaults.
     name:
         description:
             - A name for the repository. Not required when adding repofiles.
@@ -329,26 +329,8 @@ def runrefreshrepo(module, auto_import_keys=False, shortname=None):
     rc, stdout, stderr = module.run_command(cmd, check_rc=True)
     return rc, stdout, stderr
 
-
-def main():
-    module = AnsibleModule(
-        argument_spec=dict(
-            name=dict(required=False),
-            repo=dict(required=False),
-            state=dict(choices=['present', 'absent'], default='present'),
-            runrefresh=dict(required=False, default=False, type='bool'),
-            description=dict(required=False),
-            disable_gpg_check=dict(required=False, default=False, type='bool'),
-            autorefresh=dict(required=False, default=True, type='bool', aliases=['refresh']),
-            priority=dict(required=False, type='int'),
-            enabled=dict(required=False, default=True, type='bool'),
-            overwrite_multiple=dict(required=False, default=False, type='bool'),
-            auto_import_keys=dict(required=False, default=False, type='bool'),
-        ),
-        supports_check_mode=False,
-        required_one_of=[['state', 'runrefresh']],
-    )
-
+def single_repository_operation(module, single_repository_params):
+    results = {}
     repo = module.params['repo']
     alias = module.params['name']
     state = module.params['state']
@@ -476,6 +458,56 @@ def main():
         module.exit_json(changed=True, repodata=repodata, state=state, warnings=warnings)
     else:
         module.fail_json(msg="Zypper failed with rc %s" % rc, rc=rc, stdout=stdout, stderr=stderr, repodata=repodata, state=state, warnings=warnings)
+    return {}
+
+def remove_other_repositories():
+    return {}
+
+def aggregate_state(old_state, new_state):
+    return old_state
+
+def main():
+    module = AnsibleModule(
+        argument_spec=dict(
+            name=dict(required=False),
+            repo=dict(required=False),
+            state=dict(choices=['present', 'absent'], default='present'),
+            runrefresh=dict(required=False, default=False, type='bool'),
+            description=dict(required=False),
+            disable_gpg_check=dict(required=False, default=False, type='bool'),
+            autorefresh=dict(required=False, default=True, type='bool', aliases=['refresh']),
+            priority=dict(required=False, type='int'),
+            enabled=dict(required=False, default=True, type='bool'),
+            overwrite_multiple=dict(required=False, default=False, type='bool'),
+            auto_import_keys=dict(required=False, default=False, type='bool'),
+        ),
+        supports_check_mode=False,
+        required_one_of=[['state', 'runrefresh']],
+    )
+    results = {}
+    if module.params['repos']:
+        for repo in module_params['repos']:
+            single_repository_params = repo
+            # Avoid verbosity, forward keys from module.params level if undefined at repo level.
+            single_repository_params.setdefault('state', module.params['state'])
+            single_repository_params.setdefault('runrefresh', module.params['runrefresh'])
+            single_repository_params.setdefault('disable_gpg_check', module.params['disable_gpg_check'])
+            single_repository_params.setdefault('autorefresh', module.params['autorefresh'])
+            single_repository_params.setdefault('priority', module.params['priority'])
+            single_repository_params.setdefault('enabled', module.params['enabled'])
+            single_repository_params.setdefault('overwrite_multiple', module.params['overwrite_multiple'])
+            single_repository_params.setdefault('auto_import_keys', module.params['auto_import_keys'])
+            # These are not needed at single operation level
+            single_repository_params.pop('repos', False)
+            single_repository_params.pop('remove_others', False)
+            ## TODO: We should not lose results of earliert loops but aggregate
+            result = single_repository_operation(module, single_repository_params)
+    else:
+        result = single_repository_operation(module, module.params)
+
+    ## Finally check if remove_others was set
+    if module.params['remove_others']:
+        remove_other_repositories(module.params)
 
 
 if __name__ == '__main__':
