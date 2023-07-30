@@ -461,8 +461,23 @@ def single_repository_operation(module, single_repository_params):
     return {}
 
 def remove_other_repositories(module):
-    existing_repos = _parse_repos(module)
-    # If an existing repo does not match any of the defined repo(s) in all defined aspects, remove it
+    existing_repositories = _parse_repos(module)
+    wanted_repositories = []
+    if module.params['repos']:
+        wanted_repositories = module.params['repos']
+    else:
+        wanted_repositories = [{name: module.params['name'], repo: module.params['repo']}]
+    # If an existing repo does not match any of the defined repo(s) in name or URI, remove it
+    for existing_repository in existing_repositories:
+        remove = True
+        for wanted_repository in wanted_repositories:
+            if wanted_repository['name'] and wanted_repository['name'] == existing_repository['name']:
+                remove = False
+            if wanted_repository['repo'] and wanted_repository['repo'] == existing_repository['repo']:
+                remove = False
+        if remove:
+            # TODO: Track the change
+            remove_repo(module, existing_repository)
 
     return {}
 
